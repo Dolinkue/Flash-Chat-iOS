@@ -24,7 +24,7 @@ class LoginViewController: UIViewController {
                     print(e)
                 }else {
                     // que me lleve al chat si no hay error
-                    self.performSegue(withIdentifier: "LoginToChat", sender: self)
+                    self.performSegue(withIdentifier: K.loginSegue, sender: self)
             }
     
         
