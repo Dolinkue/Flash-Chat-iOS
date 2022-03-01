@@ -8,20 +8,21 @@
 
 import UIKit
 import Firebase
+import FirebaseFirestore
 
 class ChatViewController: UIViewController {
 
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var messageTextfield: UITextField!
     
-    var message: [Message] = [
-        Message(sender: "dolinkue_n@hotmail.com", body: "hey"),
-        Message(sender: "mela@me.com", body: "Hello"),
-        Message(sender: "dolinkue_n@hotmail.com", body: "Whats up"),
+    
+    let db = Firestore.firestore()
+    
+    var message: [Message] = []
         
            
     
-    ]
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -32,10 +33,49 @@ class ChatViewController: UIViewController {
         navigationItem.hidesBackButton = true
         
         tableView.register(UINib(nibName: K.cellNibName, bundle: nil), forCellReuseIdentifier: K.cellIdentifier)
+        
+        loadMessages()
 
     }
     
+    func loadMessages() {
+        message = []
+    
+     // esto para leer la info que esta en db y traerla no para cargar los msj nuevos que mando en el momento
+    db.collection(K.FStore.collectionName).getDocuments { (querySnapshot, error) in
+        if let e = error {
+            print("there was an issue\(e)")
+        } else {
+            if let snapshotDocuments =  querySnapshot?.documents {
+                for doc in snapshotDocuments {
+                    let data = doc.data()
+                    if let sender = data[K.FStore.senderField] as? String, let massegeBody = data[K.FStore.bodyField] as? String {
+                        let newMessage = Message(sender: sender, body: massegeBody)
+                        self.message.append(newMessage)
+                        
+                        // esto es para que busque la info ya que si no dependemos de la conexion a internet y no es lo suficientemente rapida para traer la info
+                        DispatchQueue.main.async {
+                            self.tableView.reloadData()
+                        }
+                        
+                    }
+                }
+            }
+        }
+        }
+    }
+    
     @IBAction func sendPressed(_ sender: UIButton) {
+        
+        if let messageBody = messageTextfield.text,
+           let messageSender = Auth.auth().currentUser?.email {
+            db.collection(K.FStore.collectionName).addDocument(data: [K.FStore.senderField:messageSender,K.FStore.bodyField:messageBody]) { (error) in
+                if let e = error {
+                    print("error con la carga de datos\(e)")
+                }
+            }
+            
+        }
     }
     
     @IBAction func Logout(_ sender: UIBarButtonItem) {
