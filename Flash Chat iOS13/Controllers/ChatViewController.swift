@@ -39,10 +39,12 @@ class ChatViewController: UIViewController {
     }
     
     func loadMessages() {
-        message = []
+        
     
-     // esto para leer la info que esta en db y traerla no para cargar los msj nuevos que mando en el momento
-    db.collection(K.FStore.collectionName).getDocuments { (querySnapshot, error) in
+        db.collection(K.FStore.collectionName).order(by: K.FStore.dateField).addSnapshotListener  { (querySnapshot, error) in
+             
+             self.message = []
+             
         if let e = error {
             print("there was an issue\(e)")
         } else {
@@ -55,7 +57,11 @@ class ChatViewController: UIViewController {
                         
                         // esto es para que busque la info ya que si no dependemos de la conexion a internet y no es lo suficientemente rapida para traer la info
                         DispatchQueue.main.async {
+                            // aca recarga los msj
                             self.tableView.reloadData()
+                            // esto es para mostrar el ultimo msj cuando se envia
+                            let indexPath = IndexPath(row: self.message.count - 1, section: 0)
+                            self.tableView.scrollToRow(at: indexPath, at: .top, animated: true)
                         }
                         
                     }
@@ -69,11 +75,15 @@ class ChatViewController: UIViewController {
         
         if let messageBody = messageTextfield.text,
            let messageSender = Auth.auth().currentUser?.email {
-            db.collection(K.FStore.collectionName).addDocument(data: [K.FStore.senderField:messageSender,K.FStore.bodyField:messageBody]) { (error) in
+            db.collection(K.FStore.collectionName).addDocument(data: [K.FStore.senderField:messageSender,K.FStore.bodyField:messageBody, K.FStore.dateField:Date().timeIntervalSince1970]) { (error) in
                 if let e = error {
                     print("error con la carga de datos\(e)")
+                    
+                   
                 }
             }
+            self.messageTextfield.text = ""
+            
             
         }
     }
@@ -102,8 +112,26 @@ extension ChatViewController: UITableViewDataSource{
     
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let messages = message[indexPath.row]
+        
         let cell = tableView.dequeueReusableCell(withIdentifier: K.cellIdentifier, for: indexPath) as! MessageCell
-        cell.label.text = message[indexPath.row].body
+        cell.label.text = messages.body
+        
+        // para diferenciar quien envia el msj
+        if messages.sender == Auth.auth().currentUser?.email {
+            cell.leftImagenView.isHidden = true
+            cell.rightImagenView.isHidden = false
+            cell.messageBubble.backgroundColor = UIColor(named: K.BrandColors.lightPurple)
+            cell.label.textColor = UIColor(named: K.BrandColors.purple)
+        } else {
+            cell.leftImagenView.isHidden = false
+            cell.rightImagenView.isHidden = true
+            cell.messageBubble.backgroundColor = UIColor(named: K.BrandColors.purple)
+            cell.label.textColor = UIColor(named: K.BrandColors.lightPurple)
+            
+        }
+        
+        
         return cell
     }
     
